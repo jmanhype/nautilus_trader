@@ -17,7 +17,6 @@ import datetime
 import re
 import time
 from decimal import Decimal
-from typing import Final
 
 import pandas as pd
 from ibapi.contract import ContractDetails
@@ -49,47 +48,97 @@ from nautilus_trader.model.objects import Quantity
 
 # fmt: on
 
-VENUE_MEMBERS: Final[dict[str, list[str]]] = {
-    # CME Group Exchanges
-    "GLBX": ["CME", "CBOT", "NYMEX", "NYBOT"],
-    # ICE Europe Exchanges
-    "IFEU": ["ICEEU", "ICEEUSOFT", "IPE"],
+VENUE_MEMBERS: dict[str, list[str]] = {
     # ICE Endex
-    "NDEX": ["ENDEX"],
+    "NDEX": ["ENDEX"],  # ICE Endex
     # Chicago Mercantile Exchange Segments
-    "XCME": ["CME"],
-    "XCEC": ["CME"],
-    "XFXS": ["CME"],
+    "XCME": ["CME"],  # Chicago Mercantile Exchange (Floor/ClearPort might use this)
+    "XCEC": ["CME"],  # CME Crypto
+    "XFXS": ["CME"],  # CME FX Link, FX Spot
     # Chicago Board of Trade Segments
-    "XCBT": ["CBOT"],
-    "CBCM": ["CBOT"],
+    "XCBT": ["CBOT"],  # Chicago Board of Trade (Floor/ClearPort might use this)
+    "CBCM": ["CBOT"],  # CBOT Commodities (specific segment)
     # New York Mercantile Exchange Segments
-    "XNYM": ["NYMEX"],
-    "NYUM": ["NYMEX"],
+    "XNYM": ["NYMEX"],  # New York Mercantile Exchange (Floor/ClearPort might use this)
+    "NYUM": ["NYMEX"],  # NYMEX Metals (specific segment)
     # ICE Futures US (formerly NYBOT)
-    "IFUS": ["NYBOT"],
+    "IFUS": ["NYBOT"],  # ICE Futures US (IBKR uses NYBOT for this)
     # US Major Exchanges
-    "XNAS": ["NASDAQ"],
-    "XNYS": ["NYSE"],
-    "ARCX": ["ARCA"],
-    "BATS": ["BATS"],
-    "IEXG": ["IEX"],
-    # European Exchanges
+    "XNAS": ["NASDAQ"],  # Nasdaq Stock Market
+    "XNYS": ["NYSE"],  # New York Stock Exchange
+    "ARCX": ["ARCA"],  # NYSE Arca
+    "BATS": ["BATS"],  # Cboe BZX Exchange U.S. (formerly BATS)
+    "IEXG": ["IEX"],  # Investors Exchange
+    # European Exchanges - Original & Added
     "XLON": ["LSE"],  # London Stock Exchange
-    "XPAR": ["SBF"],  # Euronext Paris
-    "XETR": ["IBIS"],  # Deutsche Börse
-    # Canadian Exchanges
-    "XTSE": ["TSE"],  # Toronto Stock Exchange
-    "XTSX": ["VENTURE"],  # TSX Venture Exchange
-    # Asia-Pacific Exchanges
+    "XPAR": ["SBF"],  # Euronext Paris (IBKR uses SBF)
+    "XETR": ["IBIS"],  # Deutsche Börse Xetra (IBKR uses IBIS for Xetra)
+    "XAMS": ["AEB"],  # Euronext Amsterdam (IBKR uses AEB)
+    "XBRU": ["EBS"],  # Euronext Brussels Equities (IBKR uses EBS)
+    "XBRD": [
+        "BELFOX",
+    ],  # Euronext Brussels Derivatives (IBKR uses BELFOX) - XBRD is MIC for "EURONEXT BRUSSELS - DERIVATIVES MARKET"
+    "XLIS": ["BVLP"],  # Euronext Lisbon (IBKR uses BVLP)
+    "XDUB": ["IRE"],  # Euronext Dublin (IBKR uses IRE)
+    "XOSL": ["OSL"],  # Euronext Oslo (Oslo Børs) (IBKR uses OSL)
+    "XSWX": ["SWX"],  # SIX Swiss Exchange Equities (IBKR uses SWX)
+    "XSVX": [
+        "VRTX",
+    ],  # SIX Swiss Exchange Derivatives (IBKR uses VRTX) - XSVX is MIC for "SIX SWISS EXCHANGE - DERIVATIVES MARKET"
+    "XMIL": ["BIT"],  # Borsa Italiana (Euronext Milan) (IBKR uses BIT)
+    "XMAD": ["MDRD"],  # Bolsas y Mercados Españoles (BME) - Madrid (IBKR uses MDRD)
+    "DXEX": [
+        "BATEEN",
+    ],  # Cboe Europe Equities - Netherlands (IBKR uses BATEEN) - DXEX is MIC for Cboe NL (post-Brexit main Cboe Europe venue)
+    "XWBO": ["WBAG"],  # Wiener Börse (Vienna Stock Exchange) (IBKR uses WBAG)
+    "XBUD": ["BUX"],  # Budapest Stock Exchange (IBKR uses BUX)
+    "XPRA": ["PRA"],  # Prague Stock Exchange (IBKR uses PRA)
+    "XWAR": ["WSE"],  # Warsaw Stock Exchange (IBKR uses WSE)
+    "XIST": ["ISE"],  # Bursa Istanbul (IBKR often uses ISE for Istanbul Stock Exchange equities)
+    # Nasdaq Nordic Exchanges
+    "XSTO": ["SFB"],  # Nasdaq Stockholm (IBKR uses SFB)
+    "XCSE": ["KFB"],  # Nasdaq Copenhagen (IBKR uses KFB)
+    "XHEL": ["HMB"],  # Nasdaq Helsinki (IBKR uses HMB)
+    "XICE": ["ISB"],  # Nasdaq Iceland (IBKR uses ISB)
+    # Asia-Pacific Exchanges - Original & Added
     "XASX": ["ASX"],  # Australian Securities Exchange
     "XHKF": ["HKFE"],  # Hong Kong Futures Exchange
     "XSES": ["SGX"],  # Singapore Exchange
-    "XOSE": ["OSE.JPN"],  # Osaka Securities Exchange
-    # Other Derivatives Exchanges
-    "XEUR": ["SOFFEX"],  # Eurex
-    "XSFE": ["SNFE"],  # Sydney Futures Exchange
+    "XOSE": ["OSE.JPN"],  # Osaka Securities Exchange (IBKR uses OSE.JPN)
+    "XTKS": ["TSEJ"],  # Tokyo Stock Exchange (IBKR uses TSEJ for TSE Japan Equities)
+    "XKRX": ["KSE"],  # Korea Exchange (IBKR uses KSE)
+    "XTAI": [
+        "TASE",
+    ],  # Taiwan Stock Exchange (IBKR uses TASE for Taiwan equities; note: XTAE/TASE is Tel Aviv)
+    "XHKG": ["SEHK"],  # Stock Exchange of Hong Kong (Equities) (IBKR uses SEHK)
+    "XSHG": ["SEHKNTL"],  # Shanghai Stock Exchange (Stock Connect Northbound) (IBKR uses SEHKNTL)
+    "XSHE": ["SEHKSZSE"],  # Shenzhen Stock Exchange (Stock Connect Northbound) (IBKR uses SEHKSZSE)
+    "XNSE": ["NSE"],  # National Stock Exchange of India (IBKR uses NSE)
+    "XBOM": ["BSE"],  # Bombay Stock Exchange (IBKR uses BSE)
+    # Other Derivatives Exchanges - Original & Added
+    "XEUR": ["SOFFEX"],  # Eurex (IBKR uses SOFFEX, which was a precursor)
+    "XSFE": ["SNFE"],  # Sydney Futures Exchange (now ASX 24, IBKR uses SNFE)
     "XMEX": ["MEXDER"],  # Mexican Derivatives Exchange
+    "XCBF": ["CFE"],  # Cboe Futures Exchange (IBKR uses CFE, e.g., for VIX futures)
+    # African, Middle Eastern, South American Exchanges
+    "XJSE": ["JSE"],  # Johannesburg Stock Exchange (IBKR uses JSE)
+    "XBOG": ["BVC"],  # Bolsa de Valores de Colombia (IBKR uses BVC)
+    "XTAE": [
+        "TASE",
+    ],  # Tel Aviv Stock Exchange (IBKR uses TASE for Tel Aviv equities; note: XTAI/TASE is Taiwan)
+    # CME Group Exchanges
+    "GLBX": [
+        "CME",
+        "CBOT",
+        "NYMEX",
+        "NYBOT",
+    ],  # CME Group Globex (Parent MIC for electronic trading)
+    # ICE Europe Exchanges
+    # IFEU is MIC for ICE Futures Europe. IBKR uses for products on this exchange:
+    # - ICEEU (general contracts),
+    # - ICEEUSOFT (soft commodity contracts),
+    # - IPE (former International Petroleum Exchange energy contracts, now on IFEU)
+    "IFEU": ["ICEEU", "ICEEUSOFT", "IPE"],
 }
 
 FUTURES_MONTH_TO_CODE: dict[str, str] = {
@@ -193,14 +242,14 @@ def contract_details_to_ib_contract_details(details: ContractDetails) -> IBContr
 
 def parse_instrument(
     contract_details: IBContractDetails,
+    venue: str,
     symbology_method: SymbologyMethod = SymbologyMethod.IB_SIMPLIFIED,
-    databento_venue: str | None = None,
 ) -> Instrument:
     security_type = contract_details.contract.secType
     instrument_id = ib_contract_to_instrument_id(
-        contract=contract_details.contract,
-        symbology_method=symbology_method,
-        databento_venue=databento_venue,
+        contract_details.contract,
+        venue,
+        symbology_method,
     )
 
     if security_type == "STK":
@@ -299,10 +348,15 @@ def parse_futures_contract(
     timestamp = time.time_ns()
     expiration = expiry_timestring_to_datetime(details.contract.lastTradeDateOrContractMonth)
     activation = expiration - pd.Timedelta(days=90)  # TODO: Make this more accurate
+    raw_symbol = (
+        details.contract.localSymbol
+        if details.contract.secType == "FUT"
+        else details.contract.symbol
+    )  # symbol for CONTFUT
 
     return FuturesContract(
         instrument_id=instrument_id,
-        raw_symbol=Symbol(details.contract.localSymbol),
+        raw_symbol=Symbol(raw_symbol),
         asset_class=sec_type_to_asset_class(details.underSecType),
         currency=Currency.from_str(details.contract.currency),
         price_precision=price_precision,
@@ -527,111 +581,176 @@ def decade_digit(last_digit: str, contract: IBContract) -> int:
 
 def ib_contract_to_instrument_id(
     contract: IBContract,
+    venue: str,
     symbology_method: SymbologyMethod = SymbologyMethod.IB_SIMPLIFIED,
-    databento_venue: str | None = None,
 ) -> InstrumentId:
     PyCondition.type(contract, IBContract, "IBContract")
 
-    if symbology_method == SymbologyMethod.DATABENTO:
-        assert databento_venue is not None
-        return InstrumentId.from_str(f"{contract.localSymbol}.{databento_venue}")
-    elif symbology_method == SymbologyMethod.IB_SIMPLIFIED:
-        return ib_contract_to_instrument_id_simplified_symbology(contract)
+    if symbology_method == SymbologyMethod.IB_SIMPLIFIED:
+        return ib_contract_to_instrument_id_simplified_symbology(contract, venue)
     elif symbology_method == SymbologyMethod.IB_RAW:
-        return ib_contract_to_instrument_id_raw_symbology(contract)
+        return ib_contract_to_instrument_id_raw_symbology(contract, venue)
     else:
         raise NotImplementedError(f"{symbology_method} not implemented")
 
 
-def ib_contract_to_instrument_id_raw_symbology(contract: IBContract) -> InstrumentId:
-    if contract.secType == "CFD":
-        symbol = f"{contract.localSymbol}={contract.secType}"
-        venue = "IBCFD"
-    elif contract.secType == "CMDTY":
-        symbol = f"{contract.localSymbol}={contract.secType}"
-        venue = "IBCMDTY"
-    else:
-        symbol = f"{contract.localSymbol}={contract.secType}"
-        venue = (contract.primaryExchange or contract.exchange).replace(".", "/")
-    return InstrumentId.from_str(f"{symbol}.{venue}")
-
-
 def ib_contract_to_instrument_id_simplified_symbology(  # noqa: C901 (too complex)
     contract: IBContract,
+    venue: str,
 ) -> InstrumentId:
     security_type = contract.secType
 
     if security_type == "STK":
         symbol = (contract.localSymbol or contract.symbol).replace(" ", "-")
-        venue = contract.primaryExchange if contract.exchange == "SMART" else contract.exchange
     elif security_type == "IND":
         symbol = f"^{(contract.localSymbol or contract.symbol)}"
-        venue = contract.exchange
-    elif security_type == "OPT" or security_type == "CONTFUT":
-        symbol = contract.localSymbol.replace(" ", "") or contract.symbol.replace(" ", "")
-        venue = contract.exchange
+    elif security_type == "OPT":
+        symbol = contract.localSymbol.replace(" ", "")
+    elif security_type == "CONTFUT":
+        symbol = contract.symbol
     elif security_type == "FUT" and (m := RE_FUT_ORIGINAL.match(contract.localSymbol)):
-        symbol = f"{m['symbol']}{m['month']}{decade_digit(m['year'], contract)}{m['year']}"
-        venue = contract.exchange
+        symbol = f"{m['symbol']}{m['month']}{m['year']}"
     elif security_type == "FUT" and (m := RE_FUT2_ORIGINAL.match(contract.localSymbol)):
-        symbol = f"{m['symbol']}{FUTURES_MONTH_TO_CODE[m['month']]}{m['year']}"
-        venue = contract.exchange
+        symbol = f"{m['symbol']}{FUTURES_MONTH_TO_CODE[m['month']]}{m['year'][-1]}"
     elif security_type == "FUT" and (m := RE_FUT3_ORIGINAL.match(contract.localSymbol)):
-        symbol = f"{m['symbol']}{FUTURES_MONTH_TO_CODE[m['month']]}{m['year']}"
-        venue = contract.exchange
+        symbol = f"{m['symbol']}{FUTURES_MONTH_TO_CODE[m['month']]}{m['year'][-1]}"
     elif security_type == "FOP" and (m := RE_FOP_ORIGINAL.match(contract.localSymbol)):
-        symbol = f"{m['symbol']}{m['month']}{decade_digit(m['year'], contract)}{m['year']}{m['right']}{m['strike']}"
-        venue = contract.exchange
+        symbol = f"{m['symbol']}{m['month']}{m['year']} {m['right']}{m['strike']}"
     elif security_type in ["CASH", "CRYPTO"]:
         symbol = (
             f"{contract.localSymbol}".replace(".", "/") or f"{contract.symbol}/{contract.currency}"
         )
-        venue = contract.exchange
     elif security_type == "CFD":
         if m := RE_CFD_CASH.match(contract.localSymbol):
             symbol = (
                 f"{contract.localSymbol}".replace(".", "/")
                 or f"{contract.symbol}/{contract.currency}"
             )
-            venue = "IBCFD"
         else:
             symbol = (contract.symbol).replace(" ", "-")
-            venue = "IBCFD"
     elif security_type == "CMDTY":
         symbol = (contract.symbol).replace(" ", "-")
-        venue = "IBCMDTY"
     else:
         symbol = None
-        venue = None
-    if symbol and venue:
+
+    if symbol:
         return InstrumentId(Symbol(symbol), Venue(venue))
 
     raise ValueError(f"Unknown {contract=}")
 
 
+def ib_contract_to_instrument_id_raw_symbology(
+    contract: IBContract,
+    venue: str,
+) -> InstrumentId:
+    if contract.secType == "CFD":
+        symbol = f"{contract.localSymbol}={contract.secType}"
+    elif contract.secType == "CMDTY":
+        symbol = f"{contract.localSymbol}={contract.secType}"
+    else:
+        symbol = f"{contract.localSymbol}={contract.secType}"
+
+    return InstrumentId.from_str(f"{symbol}.{venue}")
+
+
 def instrument_id_to_ib_contract(
     instrument_id: InstrumentId,
+    exchange: str,
     symbology_method: SymbologyMethod = SymbologyMethod.IB_SIMPLIFIED,
-    exchange: str | None = None,
 ) -> IBContract:
     PyCondition.type(instrument_id, InstrumentId, "InstrumentId")
 
-    if symbology_method == SymbologyMethod.DATABENTO:
-        return instrument_id_to_ib_contract_databento_symbology(
-            instrument_id,
-            exchange=exchange or "SMART",
-        )
-    elif symbology_method == SymbologyMethod.IB_SIMPLIFIED:
-        return instrument_id_to_ib_contract_simplified_symbology(instrument_id)
+    if symbology_method == SymbologyMethod.IB_SIMPLIFIED:
+        return instrument_id_to_ib_contract_simplified_symbology(instrument_id, exchange)
     elif symbology_method == SymbologyMethod.IB_RAW:
         return instrument_id_to_ib_contract_raw_symbology(instrument_id)
     else:
         raise NotImplementedError(f"{symbology_method} not implemented")
 
 
+def instrument_id_to_ib_contract_simplified_symbology(  # noqa: C901 (too complex)
+    instrument_id: InstrumentId,
+    exchange: str,
+) -> IBContract:
+    if exchange in VENUES_CASH and (m := RE_CASH.match(instrument_id.symbol.value)):
+        return IBContract(
+            secType="CASH",
+            exchange=exchange,
+            localSymbol=f"{m['symbol']}.{m['currency']}",
+        )
+    elif exchange in VENUES_CRYPTO and (m := RE_CRYPTO.match(instrument_id.symbol.value)):
+        return IBContract(
+            secType="CRYPTO",
+            exchange=exchange,
+            localSymbol=f"{m['symbol']}.{m['currency']}",
+        )
+    elif exchange in VENUES_OPT and (m := RE_OPT.match(instrument_id.symbol.value)):
+        return IBContract(
+            secType="OPT",
+            exchange=exchange,
+            localSymbol=f"{m['symbol'].ljust(6)}{m['expiry']}{m['right']}{m['strike']}{m['decimal']}",
+        )
+    elif exchange in VENUES_FUT:
+        if m := RE_FUT_ORIGINAL.match(instrument_id.symbol.value):
+            return IBContract(
+                secType="FUT",
+                exchange=exchange,
+                localSymbol=f"{m['symbol']}{m['month']}{m['year']}",
+            )
+        elif m := RE_FUT_UNDERLYING.match(instrument_id.symbol.value):
+            return IBContract(
+                secType="CONTFUT",
+                exchange=exchange,
+                symbol=m["symbol"],
+            )
+        elif m := RE_FOP_ORIGINAL.match(instrument_id.symbol.value):
+            return IBContract(
+                secType="FOP",
+                exchange=exchange,
+                localSymbol=f"{m['symbol']}{m['month']}{m['year']} {m['right']}{m['strike']}",
+            )
+        else:
+            raise ValueError(f"Cannot parse {instrument_id}, use 2-digit year for FUT and FOP")
+    elif exchange in VENUES_CFD:
+        if m := RE_CASH.match(instrument_id.symbol.value):
+            return IBContract(
+                secType="CFD",
+                exchange="SMART",
+                symbol=m["symbol"],
+                localSymbol=f"{m['symbol']}.{m['currency']}",
+            )
+        else:
+            return IBContract(
+                secType="CFD",
+                exchange="SMART",
+                symbol=f"{instrument_id.symbol.value}".replace("-", " "),
+            )
+    elif exchange in VENUES_CMDTY:
+        return IBContract(
+            secType="CMDTY",
+            exchange="SMART",
+            symbol=f"{instrument_id.symbol.value}".replace("-", " "),
+        )
+    elif str(instrument_id.symbol).startswith("^"):
+        return IBContract(
+            secType="IND",
+            exchange=exchange,
+            localSymbol=instrument_id.symbol.value[1:],
+        )
+
+    # Default to Stock
+    return IBContract(
+        secType="STK",
+        exchange="SMART",
+        primaryExchange=exchange,
+        localSymbol=f"{instrument_id.symbol.value}".replace("-", " "),
+    )
+
+
 def instrument_id_to_ib_contract_raw_symbology(instrument_id: InstrumentId) -> IBContract:
     local_symbol, security_type = instrument_id.symbol.value.rsplit("=", 1)
     exchange = instrument_id.venue.value.replace("/", ".")
+
     if security_type == "STK":
         return IBContract(
             secType=security_type,
@@ -663,130 +782,3 @@ def instrument_id_to_ib_contract_raw_symbology(instrument_id: InstrumentId) -> I
             exchange=exchange,
             localSymbol=local_symbol,
         )
-
-
-def instrument_id_to_ib_contract_simplified_symbology(  # noqa: C901 (too complex)
-    instrument_id: InstrumentId,
-) -> IBContract:
-    if instrument_id.venue.value in VENUES_CASH and (
-        m := RE_CASH.match(instrument_id.symbol.value)
-    ):
-        return IBContract(
-            secType="CASH",
-            exchange=instrument_id.venue.value,
-            localSymbol=f"{m['symbol']}.{m['currency']}",
-        )
-    elif instrument_id.venue.value in VENUES_CRYPTO and (
-        m := RE_CRYPTO.match(instrument_id.symbol.value)
-    ):
-        return IBContract(
-            secType="CRYPTO",
-            exchange=instrument_id.venue.value,
-            localSymbol=f"{m['symbol']}.{m['currency']}",
-        )
-    elif instrument_id.venue.value in VENUES_OPT and (
-        m := RE_OPT.match(instrument_id.symbol.value)
-    ):
-        return IBContract(
-            secType="OPT",
-            exchange=instrument_id.venue.value,
-            localSymbol=f"{m['symbol'].ljust(6)}{m['expiry']}{m['right']}{m['strike']}{m['decimal']}",
-        )
-    elif instrument_id.venue.value in VENUES_FUT:
-        if m := RE_FUT.match(instrument_id.symbol.value):
-            return IBContract(
-                secType="FUT",
-                exchange=instrument_id.venue.value,
-                localSymbol=f"{m['symbol']}{m['month']}{m['year'][-1]}",
-            )
-        elif m := RE_FUT_UNDERLYING.match(instrument_id.symbol.value):
-            return IBContract(
-                secType="CONTFUT",
-                exchange=instrument_id.venue.value,
-                symbol=m["symbol"],
-            )
-        elif m := RE_FOP.match(instrument_id.symbol.value):
-            return IBContract(
-                secType="FOP",
-                exchange=instrument_id.venue.value,
-                localSymbol=f"{m['symbol']}{m['month']}{m['year'][-1]} {m['right']}{m['strike']}",
-            )
-        else:
-            raise ValueError(f"Cannot parse {instrument_id}, use 2-digit year for FUT and FOP")
-    elif instrument_id.venue.value in VENUES_CFD:
-        if m := RE_CASH.match(instrument_id.symbol.value):
-            return IBContract(
-                secType="CFD",
-                exchange="SMART",
-                symbol=m["symbol"],
-                localSymbol=f"{m['symbol']}.{m['currency']}",
-            )
-        else:
-            return IBContract(
-                secType="CFD",
-                exchange="SMART",
-                symbol=f"{instrument_id.symbol.value}".replace("-", " "),
-            )
-    elif instrument_id.venue.value in VENUES_CMDTY:
-        return IBContract(
-            secType="CMDTY",
-            exchange="SMART",
-            symbol=f"{instrument_id.symbol.value}".replace("-", " "),
-        )
-    elif str(instrument_id.symbol).startswith("^"):
-        return IBContract(
-            secType="IND",
-            exchange=instrument_id.venue.value,
-            localSymbol=instrument_id.symbol.value[1:],
-        )
-
-    # Default to Stock
-    return IBContract(
-        secType="STK",
-        exchange="SMART",
-        primaryExchange=instrument_id.venue.value,
-        localSymbol=f"{instrument_id.symbol.value}".replace("-", " "),
-    )
-
-
-def instrument_id_to_ib_contract_databento_symbology(
-    instrument_id: InstrumentId,
-    exchange: str,
-) -> IBContract:
-    if instrument_id.venue.value in ["GLBX", "IFEU", "NDEX"]:
-        assert exchange is not None
-        if RE_FUT.match(instrument_id.symbol.value) or RE_FUT_ORIGINAL.match(
-            instrument_id.symbol.value,
-        ):
-            return IBContract(
-                secType="FUT",
-                exchange=exchange,
-                localSymbol=instrument_id.symbol.value,
-            )
-        elif RE_FOP.match(instrument_id.symbol.value) or RE_FOP_ORIGINAL.match(
-            instrument_id.symbol.value,
-        ):
-            return IBContract(
-                secType="FOP",
-                exchange=exchange,
-                localSymbol=instrument_id.symbol.value,
-            )
-        else:
-            raise ValueError(
-                f"Failed to parse ib_contract for {instrument_id}. "
-                f"Ensure it is a valid Future InstrumentId",
-            )
-    else:
-        if RE_OPT.match(instrument_id.symbol.value):
-            return IBContract(
-                secType="OPT",
-                exchange=exchange,
-                localSymbol=instrument_id.symbol.value,
-            )
-        else:
-            return IBContract(
-                secType="STK",
-                exchange=exchange,
-                localSymbol=instrument_id.symbol.value,
-                currency="USD",
-            )
