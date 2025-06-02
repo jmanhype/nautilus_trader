@@ -42,15 +42,16 @@ def profile_hot_path(num_quotes: int = 10000):
     signals_generated = 0
     trades_executed = 0
     
+    # Create adapter class once
+    class QuoteAdapter:
+        __slots__ = ['ask_price', 'bid_price', 'ask_size', 'bid_size']
+        def __init__(self, q):
+            self.ask_price = q.ask_price
+            self.bid_price = q.bid_price
+            self.ask_size = q.ask_size
+            self.bid_size = q.bid_size
+    
     for quote in quotes:
-        # Convert to expected format
-        class QuoteAdapter:
-            def __init__(self, q):
-                self.ask_price = q.ask_price
-                self.bid_price = q.bid_price
-                self.ask_size = q.ask_size
-                self.bid_size = q.bid_size
-        
         adapted_quote = QuoteAdapter(quote)
         
         # Hot path: Signal calculation

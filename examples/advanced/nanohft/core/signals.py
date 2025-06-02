@@ -126,6 +126,52 @@ class EdgeCalculator:
         return self._ready
 
 
+class CombinedSignalCalculator:
+    """
+    Combined VAMP and Edge calculator for benchmarking.
+    
+    This is a Python reference implementation that matches
+    the Cython version's interface.
+    """
+    
+    def __init__(self, epsilon: float = 0.0001):
+        """Initialize combined calculator."""
+        self.epsilon = epsilon
+        self._vamp: Optional[float] = None
+        self._edge_bp: Optional[float] = None
+        self._ready = False
+        
+    def update(self, bid_price: float, ask_price: float, 
+               bid_size: float, ask_size: float) -> None:
+        """Update both VAMP and edge in one pass."""
+        # Calculate VAMP
+        total_size = bid_size + ask_size + self.epsilon
+        self._vamp = (ask_price * bid_size + bid_price * ask_size) / total_size
+        
+        # Calculate mid and edge
+        mid_price = (bid_price + ask_price) / 2
+        if mid_price > 0:
+            self._edge_bp = 10000 * (self._vamp - mid_price) / mid_price
+            self._ready = True
+        else:
+            self._ready = False
+            
+    @property
+    def vamp(self) -> Optional[float]:
+        """Get VAMP value."""
+        return self._vamp
+        
+    @property
+    def edge_bp(self) -> Optional[float]:
+        """Get edge in basis points."""
+        return self._edge_bp
+        
+    @property
+    def ready(self) -> bool:
+        """Check if values are ready."""
+        return self._ready
+
+
 class ATRCalculator:
     """
     Simplified ATR calculator using quote ticks.
