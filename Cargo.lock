@@ -1183,6 +1183,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fcc8f365936c834db5514fc45aee5b1202d677e6b40e48468aaaa8183ca8c7"
 dependencies = [
  "aws-lc-sys",
+ "untrusted 0.7.1",
  "zeroize",
 ]
 
@@ -3609,6 +3610,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "rustls",
+ "rustls-native-certs",
  "rustls-pki-types",
  "tokio",
  "tokio-rustls",
@@ -4517,6 +4519,7 @@ version = "0.49.0"
 dependencies = [
  "anyhow",
  "async-stream",
+ "aws-lc-rs",
  "base64",
  "chrono",
  "criterion",
@@ -4533,7 +4536,6 @@ dependencies = [
  "pyo3",
  "pyo3-async-runtimes",
  "reqwest",
- "ring",
  "rstest",
  "rust_decimal",
  "serde",
@@ -4619,6 +4621,7 @@ name = "nautilus-cryptography"
 version = "0.49.0"
 dependencies = [
  "anyhow",
+ "aws-lc-rs",
  "base64",
  "criterion",
  "hex",
@@ -4626,7 +4629,6 @@ dependencies = [
  "pem",
  "pyo3",
  "rand 0.9.1",
- "ring",
  "rstest",
  "rustls",
  "rustls-platform-verifier",
@@ -4888,6 +4890,7 @@ name = "nautilus-persistence"
 version = "0.49.0"
 dependencies = [
  "anyhow",
+ "arrow",
  "binary-heap-plus",
  "compare",
  "criterion",
@@ -4909,12 +4912,14 @@ dependencies = [
  "quickcheck",
  "quickcheck_macros",
  "rand 0.9.1",
+ "regex",
  "rstest",
  "serde",
  "serde_json",
  "tempfile",
  "tokio",
- "walkdir",
+ "unbounded-interval-tree",
+ "url",
 ]
 
 [[package]]
@@ -5034,6 +5039,7 @@ dependencies = [
  "heck",
  "nautilus-core",
  "nautilus-model",
+ "nautilus-persistence",
  "nautilus-serialization",
  "nautilus-testkit",
  "pyo3",
@@ -5062,6 +5068,7 @@ name = "nautilus-testkit"
 version = "0.49.0"
 dependencies = [
  "anyhow",
+ "aws-lc-rs",
  "axum",
  "hex",
  "nautilus-common",
@@ -5069,7 +5076,6 @@ dependencies = [
  "nautilus-model",
  "pyo3",
  "reqwest",
- "ring",
  "rstest",
  "serde_json",
  "tempfile",
@@ -5327,14 +5333,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d94ac16b433c0ccf75326388c893d2835ab7457ea35ab8ba5d745c053ef5fa16"
 dependencies = [
  "async-trait",
+ "base64",
  "bytes",
  "chrono",
+ "form_urlencoded",
  "futures",
  "http",
+ "http-body-util",
+ "httparse",
  "humantime",
+ "hyper",
  "itertools 0.14.0",
+ "md-5",
  "parking_lot",
  "percent-encoding",
+ "quick-xml",
+ "rand 0.9.1",
+ "reqwest",
+ "ring",
+ "rustls-pemfile",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
  "thiserror 2.0.12",
  "tokio",
  "tracing",
@@ -6129,6 +6149,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
+name = "quick-xml"
+version = "0.37.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "331e97a1af0bf59823e6eadffe373d7b27f485be8748f71471c662c1f269b7fb"
+dependencies = [
+ "memchr",
+ "serde",
+]
+
+[[package]]
 name = "quickcheck"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6474,6 +6504,7 @@ dependencies = [
  "pin-project-lite",
  "quinn",
  "rustls",
+ "rustls-native-certs",
  "rustls-pki-types",
  "serde",
  "serde_json",
@@ -6514,7 +6545,7 @@ dependencies = [
  "cfg-if",
  "getrandom 0.2.16",
  "libc",
- "untrusted",
+ "untrusted 0.9.0",
  "windows-sys 0.52.0",
 ]
 
@@ -6839,7 +6870,7 @@ dependencies = [
  "aws-lc-rs",
  "ring",
  "rustls-pki-types",
- "untrusted",
+ "untrusted 0.9.0",
 ]
 
 [[package]]
@@ -7348,6 +7379,7 @@ dependencies = [
  "memchr",
  "once_cell",
  "percent-encoding",
+ "rustls",
  "serde",
  "serde_json",
  "sha2",
@@ -7357,6 +7389,7 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "url",
+ "webpki-roots 0.26.11",
 ]
 
 [[package]]
@@ -8262,6 +8295,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eaea85b334db583fe3274d12b4cd1880032beab409c0d774be044d4480ab9a94"
 
 [[package]]
+name = "unbounded-interval-tree"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fac967d0ba617b6fd7f558750a2924a7086998ae52524b75aba74a719c11264"
+dependencies = [
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "unicode-bidi"
 version = "0.3.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8311,6 +8353,12 @@ name = "unindent"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7264e107f553ccae879d21fbea1d6724ac785e8c3bfc762137959b5802826ef3"
+
+[[package]]
+name = "untrusted"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "untrusted"
