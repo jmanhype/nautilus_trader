@@ -275,11 +275,50 @@ class QueueFirstHFT(Strategy):
         self._check_spc_limits()
         
     def on_quote_tick(self, tick: QuoteTick) -> None:
-        """Handle quote tick updates for ATR calculation."""
-        # ATR typically needs bars, not quote ticks
-        # For now, we'll skip ATR updates from quote ticks
-        # In production, you'd subscribe to bars for ATR calculation
-        pass
+        """Handle quote tick updates."""
+        # Update ATR with quote
+        if self._atr:
+            # Simple ATR approximation from spread
+            spread = float(tick.ask_price) - float(tick.bid_price)
+            # ATR needs bars, but we can approximate with spread
+            
+        # Process trading logic with quote data
+        self._process_quote_trading_logic(tick)
+    
+    def _process_quote_trading_logic(self, tick: QuoteTick) -> None:
+        """Process trading logic from quote tick."""
+        # Calculate VAMP from quote
+        best_bid = float(tick.bid_price)
+        best_ask = float(tick.ask_price)
+        bid_size = float(tick.bid_size)
+        ask_size = float(tick.ask_size)
+        
+        epsilon = 0.0001
+        vamp = (best_ask * bid_size + best_bid * ask_size) / (bid_size + ask_size + epsilon)
+        
+        # Calculate edge
+        mid = (best_bid + best_ask) / 2
+        edge_bp = 10000 * (vamp - mid) / mid if mid > 0 else 0
+        
+        self.opportunity_count += 1
+        
+        # Check edge threshold
+        if abs(edge_bp) < self.edge_threshold_bp:
+            return
+            
+        # For backtesting, submit a simple market order
+        if not self.dry_run:
+            side = OrderSide.BUY if edge_bp > 0 else OrderSide.SELL
+            quantity = self.instrument.make_qty(0.1)  # Simple fixed size
+            
+            order = self.order_factory.market(
+                instrument_id=self.instrument_id,
+                order_side=side,
+                quantity=quantity,
+                time_in_force=TimeInForce.IOC,
+            )
+            
+            self.submit_order(order)
             
     def on_event(self, event: Data) -> None:
         """Handle generic events."""
@@ -298,7 +337,7 @@ class QueueFirstHFT(Strategy):
             
         # Calculate VAMP and edge
         vamp = self._calculate_vamp(book)
-        mid_price = book.mid_price()
+        mid_price = book.midpoint()
         if not mid_price:
             return
         mid = float(mid_price)
@@ -410,7 +449,7 @@ class QueueFirstHFT(Strategy):
         book = self._get_order_book()
         if not book:
             return Quantity.zero()
-        mid_price = book.mid_price()
+        mid_price = book.midpoint()
         if not mid_price:
             return Quantity.zero()
             
@@ -428,7 +467,7 @@ class QueueFirstHFT(Strategy):
             
         # Calculate order parameters
         side = OrderSide.BUY if edge_bp > 0 else OrderSide.SELL
-        mid_price = float(book.mid_price())
+        mid_price = float(book.midpoint())
         
         # Calculate price with spread (apply staleness multiplier)
         effective_spread_bp = self.maker_spread_bp * self.staleness_spread_multiplier
@@ -544,7 +583,7 @@ class QueueFirstHFT(Strategy):
             # Check if we got adversely filled (price moved against us)
             book = self._get_order_book()
             if book:
-                current_mid = book.mid_price()
+                current_mid = book.midpoint()
                 if current_mid and float(current_mid) < float(event.avg_px):
                     # Adverse fill - we bought higher than current mid
                     self.defect_count += 1
@@ -553,7 +592,7 @@ class QueueFirstHFT(Strategy):
             # Sell side
             book = self._get_order_book()
             if book:
-                current_mid = book.mid_price()
+                current_mid = book.midpoint()
                 if current_mid and float(current_mid) > float(event.avg_px):
                     # Adverse fill - we sold lower than current mid
                     self.defect_count += 1

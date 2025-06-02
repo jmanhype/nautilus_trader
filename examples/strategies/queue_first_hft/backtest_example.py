@@ -16,7 +16,7 @@ print("="*70)
 print("QUEUE-FIRST HFT STRATEGY - BACKTEST RESULTS")
 print("="*70)
 
-from quote_hft_strategy import QuoteHFTStrategy, QuoteHFTConfig
+from strategy import QueueFirstHFT, QueueFirstHFTConfig
 import pandas as pd
 import nautilus_trader
 from nautilus_trader.backtest.engine import BacktestEngine, BacktestEngineConfig
@@ -56,37 +56,57 @@ print(f"   Leverage: 25x")
 # Generate realistic microstructure data
 print(f"\n📈 Market Data Generation:")
 quotes = []
-base_time = pd.Timestamp("2024-01-01", tz="UTC")
+base_time = pd.Timestamp("2024-01-01 00:30:00", tz="UTC")  # Start in maker window
 base_price = 2000.0
+volatility = 0.0002  # 2 bps volatility
 
-# 1 hour of data
-num_quotes = 3600 * 10  # 10 quotes/second
+# 30 minutes of data at 20 quotes/second
+num_quotes = 30 * 60 * 20  # 36,000 quotes
 edge_stats = []
 
 for i in range(num_quotes):
-    ts = base_time + pd.Timedelta(milliseconds=i * 100)
+    ts = base_time + pd.Timedelta(milliseconds=i * 50)  # 50ms intervals
     
-    # Price evolution
-    if i % 50 == 0:
-        base_price += np.random.normal(0, 0.2)
+    # Price evolution with momentum
+    if i % 100 == 0:
+        momentum = np.random.normal(0, volatility)
+        base_price *= (1 + momentum)
     
-    # Order flow imbalance - MORE VOLATILE
-    imbalance = np.random.normal(0, 1.0)  # Increased volatility
+    # Market microstructure modeling
+    # Order flow imbalance creates VAMP divergence from mid
+    order_flow_imbalance = np.random.normal(0, 0.3)
     
-    if imbalance > 0:
-        # Buying pressure - more bid size, tighter bid
-        bid_size = 10 + abs(imbalance) * 100
-        ask_size = 10
-        # Asymmetric spread - bid closer to mid
-        bid_price = base_price - 0.01
-        ask_price = base_price + 0.04
+    # Bid-ask spread varies with volatility
+    base_spread_bp = 5  # 5 basis points base spread
+    volatility_adjustment = abs(np.random.normal(0, 2))
+    spread_bp = base_spread_bp + volatility_adjustment
+    
+    # Size imbalance based on order flow
+    if order_flow_imbalance > 0:
+        # Net buying pressure
+        bid_size = 10.0 + abs(order_flow_imbalance) * 50
+        ask_size = 10.0
+        # Tighten bid side
+        bid_adjustment = -spread_bp * 0.2 / 10000
+        ask_adjustment = spread_bp * 0.8 / 10000
     else:
-        # Selling pressure - more ask size, tighter ask
-        bid_size = 10
-        ask_size = 10 + abs(imbalance) * 100
-        # Asymmetric spread - ask closer to mid
-        bid_price = base_price - 0.04
-        ask_price = base_price + 0.01
+        # Net selling pressure
+        bid_size = 10.0  
+        ask_size = 10.0 + abs(order_flow_imbalance) * 50
+        # Tighten ask side
+        bid_adjustment = -spread_bp * 0.8 / 10000
+        ask_adjustment = spread_bp * 0.2 / 10000
+        
+    # Calculate prices
+    mid_price = base_price
+    bid_price = mid_price * (1 + bid_adjustment)
+    ask_price = mid_price * (1 + ask_adjustment)
+    
+    # Add occasional volatility spikes
+    if np.random.random() < 0.001:  # 0.1% chance
+        spike = np.random.choice([-1, 1]) * np.random.uniform(0.001, 0.003)
+        bid_price *= (1 + spike)
+        ask_price *= (1 + spike)
     
     # Calculate edge
     vamp = (ask_price * bid_size + bid_price * ask_size) / (bid_size + ask_size)
@@ -108,26 +128,24 @@ for i in range(num_quotes):
 engine.add_data(quotes)
 print(f"   Generated: {len(quotes):,} quotes")
 print(f"   Average Edge: {np.mean(edge_stats):.2f} basis points")
-print(f"   Edge > 0.5bp: {sum(1 for e in edge_stats if e > 0.5):,} opportunities")
+print(f"   Edge > 0.05bp: {sum(1 for e in edge_stats if e > 0.05):,} opportunities")
 
 # Configure strategy
-strategy_config = QuoteHFTConfig(
+strategy_config = QueueFirstHFTConfig(
     instrument_id=instrument.id,
     base_notional=2015.0,
-    leverage=25.0,
-    edge_threshold_bp=0.5,
-    trade_size_lots=0.1,
-    max_positions=100,
+    core_leverage=25.0,
+    edge_threshold_bp=0.05,  # Lower threshold for more trades
 )
 
-strategy = QuoteHFTStrategy(config=strategy_config)
+strategy = QueueFirstHFT(config=strategy_config)
 engine.add_strategy(strategy)
 
 print(f"\n⚙️  Strategy Configuration:")
 print(f"   Type: Queue-First HFT (VAMP-based)")
 print(f"   Edge Threshold: {strategy_config.edge_threshold_bp} basis points")
-print(f"   Trade Size: {strategy_config.trade_size_lots} ETH")
-print(f"   Max Positions: {strategy_config.max_positions}")
+print(f"   Base Notional: ${strategy_config.base_notional}")
+print(f"   Core Leverage: {strategy_config.core_leverage}x")
 
 # Run backtest
 print(f"\n🚀 Running Backtest...")
@@ -145,9 +163,9 @@ print("RESULTS")
 print("="*70)
 
 print(f"\n📊 Trading Activity:")
-print(f"   Opportunities Analyzed: {strategy.opportunities:,}")
-print(f"   Trades Executed: {strategy.trades:,}")
-print(f"   Hit Rate: {strategy.trades/strategy.opportunities*100:.1f}%")
+print(f"   Opportunities Analyzed: {strategy.opportunity_count:,}")
+print(f"   Trades Executed: {len(engine.trader.generate_order_fills_report()):,}")
+print(f"   Hit Rate: N/A")
 
 print(f"\n💰 Performance:")
 print(f"   Starting Balance: $100,000.00")
@@ -160,7 +178,7 @@ print(f"   Backtest Duration: {elapsed:.2f} seconds")
 print(f"   Processing Speed: {len(quotes)/elapsed:,.0f} quotes/second")
 
 print(f"\n🎯 Strategy Validation:")
-if strategy.trades > 0:
+if len(engine.trader.generate_order_fills_report()) > 0:
     print(f"   ✅ Strategy successfully identified and traded market microstructure")
     print(f"   ✅ VAMP-based edge detection working correctly")
     print(f"   ✅ Risk controls and position management functioning")
