@@ -1,0 +1,23 @@
+{
+  "instrument_id": "ETHUSDT-PERP.BINANCE",
+  "base_notional": 2015.0,
+  "core_leverage": 25.0,
+  "maker_leverage": 55.0,
+  "edge_threshold_bp": 0.05,
+  "maker_spread_bp": 10.0,
+  "arb_threshold_bp": 2.4,
+  "queue_rank_threshold": 0.35,
+  "atr_gate_bp": 6.0,
+  "atr_period": 60,
+  "cancel_cluster_count": 5,
+  "cancel_cluster_window_ms": 50,
+  "staleness_threshold_us": 30,
+  "latency_threshold_us": 10,
+  "dpmo_threshold": 80,
+  "maker_start_utc": "00:30",
+  "maker_end_utc": "06:00",
+  "maker2_start_utc": "12:30",
+  "maker2_end_utc": "14:30",
+  "manage_inventory": true,
+  "dry_run": false
+}
